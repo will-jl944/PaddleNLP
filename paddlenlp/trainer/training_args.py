@@ -878,6 +878,10 @@ class TrainingArguments:
         default=None,
         metadata={"help": "The intervals to skip, pass start global step and end global step at each interval"},
     )
+    offload_optim: Optional[bool] = field(
+        default=False,
+        metadata={"help": "Offload optimizer after optimizer.step()"},
+    )
 
     def __post_init__(self):
         env_local_rank = int(os.environ.get("PADDLE_RANK_IN_NODE", -1))

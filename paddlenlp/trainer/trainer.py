@@ -111,6 +111,7 @@ from ..utils.env import (
 )
 from ..utils.import_utils import is_datasets_available, is_paddle_cuda_available
 from ..utils.log import logger
+from ..utils.tools import get_env_device
 from .argparser import strtobool
 from .integrations import get_reporting_integration_callbacks
 from .plugins.timer import RuntimeTimer, get_timers, set_timers
@@ -1141,6 +1142,10 @@ class Trainer:
                         args, self.state, self.control, scaler=self.scaler if self.do_grad_scaling else None
                     )
                     optimizer_was_run = True
+
+                    if self.args.offload_optim:
+                        self._reload_optimizer()
+
                     if self.do_grad_scaling:
                         if args.pipeline_parallel_degree > 1:
                             assert not self.args.use_expert_parallel, "pipeline moe not work under fp16"
@@ -1163,6 +1168,9 @@ class Trainer:
                         self.optimizer._step(parameters_list)
                     else:
                         self.optimizer.step()
+
+                    if self.args.offload_optim:
+                        self._offload_optimizer()
 
                     self.timers and self.timers("optimizer-step").stop()
 
@@ -1743,6 +1751,38 @@ class Trainer:
             )
 
         return self.optimizer
+
+    def _apply_to_optimizer(self, action):
+        attributes = [
+            ("_accumulators", "_moment1_acc_str"),
+            ("_accumulators", "_moment2_acc_str"),
+            ("_master_weights",),
+            ("_accumulators_holder",),
+        ]
+
+        for attr in attributes:
+            if all(hasattr(self.optimizer, a) for a in attr):
+                target_attr = getattr(self.optimizer, attr[0])
+                if len(attr) == 2:
+                    target_attr = target_attr[getattr(self.optimizer, attr[1])]
+
+                for key, value in target_attr.items():
+                    if get_env_device() == "gpu":
+                        target_attr[key] = getattr(value, action)()
+                    else:
+                        target_attr[key] = getattr(value, "to")(action)
+
+    def _offload_optimizer(self):
+        if get_env_device() == "gpu":
+            self._apply_to_optimizer("pin_memory")
+        else:
+            self._apply_to_optimizer("cpu")
+
+    def _reload_optimizer(self):
+        if get_env_device() == "gpu":
+            self._apply_to_optimizer("cuda")
+        else:
+            self._apply_to_optimizer(get_env_device())
 
     def _load_rng_state(self, checkpoint):
         # Load RNG states from `checkpoint`
@@ -2838,6 +2878,11 @@ class Trainer:
                 self.scaler.load_state_dict(
                     paddle.load(distributed_file(os.path.join(checkpoint, SCALER_NAME)), return_numpy=True)
                 )
+
+        if self.args.offload_optim:
+            logger.info("Offloading optimizer state...")
+            self._offload_optimizer()
+
         self.runtime_timer.stop()
 
     def log(self, logs: Dict[str, float], **kwargs) -> None:
