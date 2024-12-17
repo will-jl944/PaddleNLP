@@ -15,7 +15,10 @@
 from contextlib import nullcontext
 
 import paddle
-from paddle.base import core
+try:
+    from paddle.base import core
+except:
+    core = None
 from paddle.distributed import fleet
 
 from paddlenlp.trainer import Trainer
