@@ -15,15 +15,25 @@
 
 import paddle
 
+from .log import logger
+from .tools import get_env_device
+
 __all__ = [
     "empty_device_cache",
 ]
 
 
 def empty_device_cache():
-    if paddle.device.is_compiled_with_cuda():
+    device = get_env_device()
+    if device == "gpu":
         paddle.device.cuda.empty_cache()
-    elif paddle.device.is_compiled_with_xpu():
+    elif device == "xpu":
         paddle.device.xpu.empty_cache()
     else:
-        pass
+        if not getattr(empty_device_cache, "has_warned", False):
+            logger.warning(
+                "The current device ({}) does not support empty cache, calling empty_device_cache() will have no effect.".format(
+                    device
+                )
+            )
+            setattr(empty_device_cache, "has_warned", True)
