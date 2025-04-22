@@ -1134,13 +1134,16 @@ class PPOTrainer(Trainer):
             pad_to_multiple_of=pad_to_multiple_of,
         )["input_ids"]
 
-        label_ids = [paddle.unsqueeze(v, axis=0) if v.ndim == 1 else v for v in label_ids]
-        label_ids = pad_tensor(
-            label_ids,
-            pad_index=self.tokenizer.pad_token_id,
-            dtype=label_ids[0].dtype,
-            padding_side="right",
-        )
+        if len(label_ids) > 0:
+            label_ids = [paddle.unsqueeze(v, axis=0) if v.ndim == 1 else v for v in label_ids]
+            label_ids = pad_tensor(
+                label_ids,
+                pad_index=self.tokenizer.pad_token_id,
+                dtype=label_ids[0].dtype,
+                padding_side="right",
+            )
+        else:
+            label_ids = None
         position_ids = make_position_ids_from_input_ids(input_ids)
         return input_ids, label_ids, position_ids
 
@@ -1482,7 +1485,7 @@ class PPOTrainer(Trainer):
                 ):
                     with reload_and_offload_scope(
                         self,
-                        self.reward_critic_model if self.args.rl_algorithm == "ppo" else None,
+                        self.critic_model if self.args.rl_algorithm == "ppo" else None,
                         self.reward_model if not self.args.use_rm_server else None,
                     ):
                         with TimerScope(self.timers, RolloutStages.ROLLOUT_REWARD_VALUE):
