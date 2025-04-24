@@ -53,6 +53,7 @@ class ScoreModelMixin:
     normalize_function: NormalizeFunction = "affine"
     _initialized: bool = False
 
+    @classmethod
     def init_score_head(self, config: PretrainedConfig, hidden_size: int, **kwargs: Any) -> None:
         """Initialize the score head."""
         if self._initialized:
@@ -115,6 +116,7 @@ class ScoreModelMixin:
         hidden_state: paddle.Tensor,  # size = (B, L, E)
         attention_mask: paddle.Tensor | None = None,  # size = (B, L)
         position_ids: paddle.Tensor | None = None,  # size = (B, L)
+        attn_mask_startend_row_indices: paddle.Tensor | None = None,  # size = (B, 1), (B, 2), (B, 3) or (B, 4)
         return_dict: bool | None = None,
     ) -> ScoreModelOutput:
         """Forward pass of the score model."""
@@ -140,6 +142,19 @@ class ScoreModelMixin:
             second_pos = paddle.max(position_ids, axis=-1, keepdim=True)
             end_pos = paddle.stack([first_pos, second_pos], axis=-1).squeeze(1)
             end_score = scores.gather_nd(end_pos)
+        elif attn_mask_startend_row_indices is not None:
+            assert attn_mask_startend_row_indices.shape[1] == 1, "attn_mask_startend_row_indices must be with shape [B, 1]"
+            end_pos = attn_mask_startend_row_indices[:, 0].unsqueeze(-1)
+
+
+            if attn_mask_startend_row_indices.shape[1] == 2:
+                start_pos = attn_mask_startend_row_indices[:, 0].unsqueeze(-1)
+                end_pos = attn_mask_startend_row_indices[:, 1].unsqueeze(-1)
+                end_score = scores.gather_nd(end_pos)
+            else:
+
+
+            pass
         else:
             # attention_mask passed from pipeline pre-stage is shaped (bs, 1, seq_len, seq_len)
             assert attention_mask is not None and len(attention_mask.shape) == 2

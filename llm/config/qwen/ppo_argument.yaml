@@ -1,10 +1,11 @@
 # RL algorithms
-rl_algorithm: "grpo" # The reinforcement learning algorithm used, supported: "ppo", "grpo", "reinforce_plus_plus"
+rl_algorithm: "ppo" # The reinforcement learning algorithm used, supported: "ppo", "grpo", "reinforce_plus_plus"
 
 # models
 actor_model_name_or_path: "Qwen/Qwen2.5-7B-Instruct-1M" # The name or path of the actor model
-reward_model_name_or_path: "" # The name or path of the reward model
-use_rm_server: true # Whether to use the reward model server
+critic_model_name_or_path: "Qwen/Qwen2.5-7B-Instruct-1M" # The name or path of the critic model
+reward_model_name_or_path: "Qwen/Qwen2.5-7B-Instruct-1M" # The name or path of the reward model
+use_rm_server: false # Whether to use the reward model server
 reward_server: "http://127.0.0.1:8731" # The address of the reward model server
 
 # logging
@@ -47,7 +48,6 @@ quant_type: "" # Quantization type, e.g., "weight_only_int8"
 do_train: true # Whether to perform training
 seed: 42 # Random seed for reproducibility
 global_batch_size: 2 # Global batch size for training
-global_gen_batch_size: -1 # Global generation batch size for dynamic sampling
 mini_batch_size: 2 # Mini-batch size for training
 rollout_n: 8 # Number of rollouts
 update_iters: 1 # Number of training iterations for rollout samples

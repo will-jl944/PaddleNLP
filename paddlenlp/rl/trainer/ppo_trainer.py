@@ -1481,7 +1481,7 @@ class PPOTrainer(Trainer):
                 ):
                     with reload_and_offload_scope(
                         self,
-                        self.reward_critic_model if self.args.rl_algorithm == "ppo" else None,
+                        self.critic_model if self.args.rl_algorithm == "ppo" else None,
                         self.reward_model if not self.args.use_rm_server else None,
                     ):
                         with TimerScope(self.timers, RolloutStages.ROLLOUT_REWARD_VALUE):

@@ -932,6 +932,7 @@ def split_batch_by_rank(
         hcg: HybridCommunicateGroup from paddle.distributed.fleet.
         dp_degree (int): Data parallel degree.
         sharding_degree (int): Sharding parallel degree.
+        rollout_n (int): Number of generated sequences per prompt.
         balance_batch_across_dp_group (bool): Whether to balance the batch based on token count.
 
     Returns:
